@@ -516,6 +516,46 @@ header.hud-bar {
 }
 .count-preview-box strong { color: var(--ba-blue-dark); font-size: 15px; }
 
+/* =========================================
+   [신규] 큰 아이콘 캡처 모드 전용 스타일
+   (저장 버튼 누를 때만 임시로 적용됨)
+========================================= */
+.capture-large-icons .grade-tier-box {
+  padding: 14px 16px;
+}
+.capture-large-icons .grade-tier-title {
+  flex: 0 0 85px; /* 타이틀 영역 약간 확대 */
+}
+.capture-large-icons .grade-tier-title .hud-tag {
+  font-size: 14px;
+  padding: 6px 0;
+}
+.capture-large-icons .grade-slot-list {
+  gap: 6px; /* 아이콘 간격 살짝 넓힘 */
+}
+.capture-large-icons .result-slot {
+  width: 86px;  /* 기존 62px -> 86px로 대폭 확대 (가로 1080px 기준 10명~11명 핏) */
+  height: 86px;
+}
+.capture-large-icons .result-slot .order-num {
+  font-size: 11px;
+  padding: 2.5px 0;
+}
+/* 포디움(최애/차애)도 비율에 맞게 확대 */
+.capture-large-icons .hero-podium {
+  gap: 60px;
+  padding: 15px 30px 30px 30px;
+}
+.capture-large-icons .hero-card {
+  width: 160px;
+}
+.capture-large-icons .hero-name {
+  font-size: 18px;
+}
+.capture-large-icons .hero-rank-label {
+  font-size: 14.5px;
+}
+
 @media (max-width: 768px) {
   body { padding: 0 10px; }
   .tape-deco-left { display: none; }
