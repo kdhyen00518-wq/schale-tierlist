@@ -49,6 +49,7 @@
   const btnStart = document.getElementById("btnStart");
   const btnSkipTest = document.getElementById("btnSkipTest"); 
   const btnDownloadImg = document.getElementById("btnDownloadImg");
+  const btnDownloadImgLarge = document.getElementById("btnDownloadImgLarge"); // 신규 추가
   const optVariant = document.getElementById("optVariant");
   const optUnreleased = document.getElementById("optUnreleased");
   const optServerJp = document.getElementById("optServerJp");
@@ -478,55 +479,71 @@
     captureAreaEl.appendChild(tierBox);
   }
 
-// [수정] 캡처 환경 세팅 - 모바일에서도 PC 화면 비율(가로 1080px 고정)로 캡처되도록 강제 설정
-  btnDownloadImg.addEventListener("click", () => {
-    const btnText = btnDownloadImg.querySelector('.btn-text');
+// [수정] 다운로드 통합 로직 (isLargeMode에 따라 분기)
+  function downloadImage(isLargeMode, buttonEl) {
+    const btnText = buttonEl.querySelector('.btn-text');
     const originalText = btnText.innerText;
     btnText.innerText = "저장 준비 중...";
-    btnDownloadImg.disabled = true;
+    buttonEl.disabled = true;
 
-    // 1. 캡처 전, 좁은 모바일 화면에서도 요소들이 PC 레이아웃(가로 배치)을 유지하도록 캡처 영역의 너비를 강제로 1080px로 고정합니다.
     const originalWidth = captureAreaEl.style.width;
     const originalMaxWidth = captureAreaEl.style.maxWidth;
-    captureAreaEl.style.width = '1080px';
-    captureAreaEl.style.maxWidth = '1080px';
 
-    // 2. 브라우저가 변경된 강제 너비를 렌더링할 시간을 줍니다.
+    // 1. 큰 아이콘 모드일 경우 특수 CSS 클래스 적용 및 컨테이너 너비 세팅
+    if (isLargeMode) {
+      captureAreaEl.classList.add('capture-large-icons');
+      captureAreaEl.style.width = '1080px';
+      captureAreaEl.style.maxWidth = '1080px';
+    } else {
+      captureAreaEl.style.width = '1080px';
+      captureAreaEl.style.maxWidth = '1080px';
+    }
+
+    // 2. 브라우저가 화면을 모두 그릴 시간을 부여
     setTimeout(() => {
-      htmlToImage.toPng(captureAreaEl, {
+      // PNG 대신 JPEG 포맷을 사용하여 용량을 15MB 이하(보통 3~6MB)로 획기적으로 압축합니다.
+      htmlToImage.toJpeg(captureAreaEl, {
+        quality: 0.90,               // 화질 90% 유지 (시각적 손실 거의 없이 용량만 압축)
         pixelRatio: 2,               // 고화질 스케일 업
         backgroundColor: '#42b6fc',  // 투명 방지 배경색
-        canvasWidth: 1080 * 2,       // 캔버스 가로 픽셀을 PC 기준(1080)의 2배 해상도로 강제 고정
+        canvasWidth: 1080 * 2,       // 캔버스 가로 픽셀을 강제 고정
         canvasHeight: captureAreaEl.scrollHeight * 2, // 세로 길이 자동 맞춤
         style: {
-          transform: 'scale(1)',     // 모바일 브라우저의 화면 배율 무시
+          transform: 'scale(1)',     
           transformOrigin: 'top left'
         }
       })
       .then(function (dataUrl) {
         const link = document.createElement('a');
-        link.download = `BA_Tier_List_${new Date().getTime()}.png`;
+        const modeText = isLargeMode ? "Large" : "Standard";
+        link.download = `BA_Tier_List_${modeText}_${new Date().getTime()}.jpg`; // 확장자 jpg 변경
         link.href = dataUrl;
         link.click();
         
-        // 원상 복구
+        // 다운로드 성공 후 레이아웃 원상 복구
+        if (isLargeMode) captureAreaEl.classList.remove('capture-large-icons');
         captureAreaEl.style.width = originalWidth;
         captureAreaEl.style.maxWidth = originalMaxWidth;
         btnText.innerText = originalText;
-        btnDownloadImg.disabled = false;
+        buttonEl.disabled = false;
       })
       .catch(function (error) {
         console.error('이미지 변환 에러:', error);
-        alert("이미지 저장에 실패했습니다.");
+        alert("이미지 저장에 실패했습니다.\n\n로컬 환경(HTML 파일을 직접 더블클릭)에서는 브라우저 보안 정책으로 인해 이미지 저장이 차단됩니다. 깃허브 페이지를 이용해 주세요.");
         
+        // 에러 시에도 원상 복구
+        if (isLargeMode) captureAreaEl.classList.remove('capture-large-icons');
         captureAreaEl.style.width = originalWidth;
         captureAreaEl.style.maxWidth = originalMaxWidth;
         btnText.innerText = originalText;
-        btnDownloadImg.disabled = false;
+        buttonEl.disabled = false;
       });
     }, 800);
-  });
+  }
 
+  // 각각의 버튼에 이벤트 할당
+  btnDownloadImg.addEventListener("click", () => downloadImage(false, btnDownloadImg));
+  btnDownloadImgLarge.addEventListener("click", () => downloadImage(true, btnDownloadImgLarge));
   btnOpenSettings.addEventListener("click", () => {
     settingsModal.classList.remove("hidden");
     updateModalPreview();
