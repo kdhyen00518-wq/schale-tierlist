@@ -478,18 +478,30 @@
     captureAreaEl.appendChild(tierBox);
   }
 
-  // [수정] 최신 html-to-image 캡처 적용 로직
+// [수정] 캡처 환경 세팅 - 모바일에서도 PC 화면 비율(가로 1080px 고정)로 캡처되도록 강제 설정
   btnDownloadImg.addEventListener("click", () => {
     const btnText = btnDownloadImg.querySelector('.btn-text');
     const originalText = btnText.innerText;
     btnText.innerText = "저장 준비 중...";
     btnDownloadImg.disabled = true;
 
-    // 브라우저가 화면을 모두 그릴 시간을 약간 부여
+    // 1. 캡처 전, 좁은 모바일 화면에서도 요소들이 PC 레이아웃(가로 배치)을 유지하도록 캡처 영역의 너비를 강제로 1080px로 고정합니다.
+    const originalWidth = captureAreaEl.style.width;
+    const originalMaxWidth = captureAreaEl.style.maxWidth;
+    captureAreaEl.style.width = '1080px';
+    captureAreaEl.style.maxWidth = '1080px';
+
+    // 2. 브라우저가 변경된 강제 너비를 렌더링할 시간을 줍니다.
     setTimeout(() => {
       htmlToImage.toPng(captureAreaEl, {
         pixelRatio: 2,               // 고화질 스케일 업
-        backgroundColor: '#42b6fc'   // 투명 방지 배경색
+        backgroundColor: '#42b6fc',  // 투명 방지 배경색
+        canvasWidth: 1080 * 2,       // 캔버스 가로 픽셀을 PC 기준(1080)의 2배 해상도로 강제 고정
+        canvasHeight: captureAreaEl.scrollHeight * 2, // 세로 길이 자동 맞춤
+        style: {
+          transform: 'scale(1)',     // 모바일 브라우저의 화면 배율 무시
+          transformOrigin: 'top left'
+        }
       })
       .then(function (dataUrl) {
         const link = document.createElement('a');
@@ -497,18 +509,22 @@
         link.href = dataUrl;
         link.click();
         
+        // 원상 복구
+        captureAreaEl.style.width = originalWidth;
+        captureAreaEl.style.maxWidth = originalMaxWidth;
         btnText.innerText = originalText;
         btnDownloadImg.disabled = false;
       })
       .catch(function (error) {
         console.error('이미지 변환 에러:', error);
-        // 만약 사용자가 바탕화면에 있는 html 파일을 그냥 더블클릭해서(file://) 열었을 경우 발생하는 보안 오류 안내
-        alert("이미지 저장에 실패했습니다.\n\n로컬 환경(HTML 파일을 직접 더블클릭하여 실행)에서는 브라우저 보안 정책으로 인해 이미지 저장이 차단됩니다. VS Code의 Live Server 확장 프로그램 등을 사용하여 실행해 주세요.");
+        alert("이미지 저장에 실패했습니다.");
         
+        captureAreaEl.style.width = originalWidth;
+        captureAreaEl.style.maxWidth = originalMaxWidth;
         btnText.innerText = originalText;
         btnDownloadImg.disabled = false;
       });
-    }, 500);
+    }, 800);
   });
 
   btnOpenSettings.addEventListener("click", () => {
