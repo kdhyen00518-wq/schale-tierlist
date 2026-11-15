@@ -479,69 +479,87 @@
     captureAreaEl.appendChild(tierBox);
   }
 
-// [수정] 다운로드 통합 로직 (isLargeMode에 따라 분기)
+// [수정] 다운로드 통합 로직 - 레이아웃 강제 갱신(Reflow) 적용
   function downloadImage(isLargeMode, buttonEl) {
     const btnText = buttonEl.querySelector('.btn-text');
     const originalText = btnText.innerText;
     btnText.innerText = "저장 준비 중...";
     buttonEl.disabled = true;
 
-    const originalWidth = captureAreaEl.style.width;
-    const originalMaxWidth = captureAreaEl.style.maxWidth;
+    // 1. 기존 인라인 스타일과 클래스를 기억합니다.
+    const originalStyle = captureAreaEl.getAttribute('style');
+    const originalClass = captureAreaEl.className;
 
-    // 1. 큰 아이콘 모드일 경우 특수 CSS 클래스 적용 및 컨테이너 너비 세팅
+    // 2. 모드에 따라 클래스와 너비를 강제 세팅합니다.
     if (isLargeMode) {
-      captureAreaEl.classList.add('capture-large-icons');
-      captureAreaEl.style.width = '1080px';
-      captureAreaEl.style.maxWidth = '1080px';
+      captureAreaEl.className = 'capture-container capture-large-icons';
     } else {
-      captureAreaEl.style.width = '1080px';
-      captureAreaEl.style.maxWidth = '1080px';
+      captureAreaEl.className = 'capture-container';
     }
+    
+    // 모바일/PC 상관없이 캡처 전용 가로 1080px 레이아웃 강제 적용
+    captureAreaEl.style.width = '1080px';
+    captureAreaEl.style.minWidth = '1080px';
+    captureAreaEl.style.maxWidth = '1080px';
+    captureAreaEl.style.position = 'relative'; // 레이아웃 안정화
 
-    // 2. 브라우저가 화면을 모두 그릴 시간을 부여
+    // 3. ⭐️ 브라우저 렌더링 강제 갱신 (Reflow 유발)
+    // 이 줄을 통과하면 브라우저가 변경된 CSS를 화면에 즉시 적용하도록 강제합니다.
+    void captureAreaEl.offsetWidth; 
+
+    // 4. 변경된 레이아웃이 화면에 완전히 그려지고 이미지들이 준비될 시간을 줍니다. (0.8초 -> 1초로 소폭 증가)
     setTimeout(() => {
-      // PNG 대신 JPEG 포맷을 사용하여 용량을 15MB 이하(보통 3~6MB)로 획기적으로 압축합니다.
       htmlToImage.toJpeg(captureAreaEl, {
-        quality: 0.90,               // 화질 90% 유지 (시각적 손실 거의 없이 용량만 압축)
+        quality: 0.90,               // 화질 90% (용량 15MB 이하 유지)
         pixelRatio: 2,               // 고화질 스케일 업
-        backgroundColor: '#42b6fc',  // 투명 방지 배경색
-        canvasWidth: 1080 * 2,       // 캔버스 가로 픽셀을 강제 고정
-        canvasHeight: captureAreaEl.scrollHeight * 2, // 세로 길이 자동 맞춤
+        backgroundColor: '#42b6fc',  // 단색 배경 유지
+        // 캔버스 크기를 1080px x 2 해상도로 명시적으로 고정
+        canvasWidth: 2160,           
+        canvasHeight: captureAreaEl.scrollHeight * 2,
         style: {
-          transform: 'scale(1)',     
-          transformOrigin: 'top left'
+          transform: 'scale(1)',
+          transformOrigin: 'top left',
+          width: '1080px',
+          minWidth: '1080px',
+          margin: '0',
+          padding: '10px'
         }
       })
       .then(function (dataUrl) {
         const link = document.createElement('a');
         const modeText = isLargeMode ? "Large" : "Standard";
-        link.download = `BA_Tier_List_${modeText}_${new Date().getTime()}.jpg`; // 확장자 jpg 변경
+        link.download = `BA_Tier_List_${modeText}_${new Date().getTime()}.jpg`;
         link.href = dataUrl;
         link.click();
         
-        // 다운로드 성공 후 레이아웃 원상 복구
-        if (isLargeMode) captureAreaEl.classList.remove('capture-large-icons');
-        captureAreaEl.style.width = originalWidth;
-        captureAreaEl.style.maxWidth = originalMaxWidth;
+        // 다운로드 성공 후 원상 복구
+        captureAreaEl.className = originalClass;
+        if (originalStyle) {
+          captureAreaEl.setAttribute('style', originalStyle);
+        } else {
+          captureAreaEl.removeAttribute('style');
+        }
         btnText.innerText = originalText;
         buttonEl.disabled = false;
       })
       .catch(function (error) {
         console.error('이미지 변환 에러:', error);
-        alert("이미지 저장에 실패했습니다.\n\n로컬 환경(HTML 파일을 직접 더블클릭)에서는 브라우저 보안 정책으로 인해 이미지 저장이 차단됩니다. 깃허브 페이지를 이용해 주세요.");
+        alert("이미지 저장에 실패했습니다.\n\n로컬 환경에서는 보안상 저장이 차단될 수 있습니다.");
         
-        // 에러 시에도 원상 복구
-        if (isLargeMode) captureAreaEl.classList.remove('capture-large-icons');
-        captureAreaEl.style.width = originalWidth;
-        captureAreaEl.style.maxWidth = originalMaxWidth;
+        // 에러 시 원상 복구
+        captureAreaEl.className = originalClass;
+        if (originalStyle) {
+          captureAreaEl.setAttribute('style', originalStyle);
+        } else {
+          captureAreaEl.removeAttribute('style');
+        }
         btnText.innerText = originalText;
         buttonEl.disabled = false;
       });
-    }, 800);
+    }, 1000);
   }
 
-  // 각각의 버튼에 이벤트 할당
+  // 버튼 이벤트 할당
   btnDownloadImg.addEventListener("click", () => downloadImage(false, btnDownloadImg));
   btnDownloadImgLarge.addEventListener("click", () => downloadImage(true, btnDownloadImgLarge));
   btnOpenSettings.addEventListener("click", () => {
