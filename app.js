@@ -647,10 +647,15 @@
   // 최초 로드 시 설정 프리뷰 업데이트
   updateModalPreview();
 
-  // 최초 접속 시 자동 저장 데이터가 있다면 안내 모달 띄우기
+// 최초 로드 시 설정 프리뷰 업데이트
+  updateModalPreview();
+
+  // 최초 접속 시 자동 저장 데이터가 있다면 안내 모달 띄우기, 없다면 설정 모달 띄우기
   window.addEventListener('DOMContentLoaded', () => {
     if (localStorage.getItem(SAVE_KEY)) {
-      btnOpenSaveLoad.click();
+      btnOpenSaveLoad.click(); // 세이브 데이터가 있으면 이어하기 창 오픈
+    } else {
+      btnOpenSettings.click(); // 세이브 데이터가 없으면 처음이므로 설정창 오픈
     }
   });
 })();
